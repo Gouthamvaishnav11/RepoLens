@@ -214,7 +214,7 @@ These insights are transformed into a **meaningful score**, a **human-readable s
 1. Create a virtual environment:
    ```bash
    python -m venv backup
-````
+
 
 2. Activate the virtual environment:
 
@@ -253,14 +253,14 @@ These insights are transformed into a **meaningful score**, a **human-readable s
    ```
 
 ---
-
+````
 ## 📄 License
 
 This project is developed for academic and learning purposes.
 
-```
+
 ### ⭐ RepoLens – Turning GitHub Repositories into Career-Ready Portfolios
-```
+
 
 
 
