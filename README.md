@@ -233,7 +233,18 @@ These insights are transformed into a **meaningful score**, a **human-readable s
    ```bash
    pip install flask flask-cors python-dotenv requests groq
    ```
-4. Run the backend server:
+
+4.Set up environment variables:
+
+  Create a .env file in the backend folder.
+  Add the following keys:
+```bassh
+   GITHUB_TOKEN=your_github_personal_access_token
+   GROQ_API_KEY=your_groq_api_key
+```
+The backend will use these tokens to access the GitHub API and Groq API securely.
+
+5. Run the backend server:
 
    ```bash
    python app.py
