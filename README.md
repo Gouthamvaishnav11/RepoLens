@@ -1,4 +1,3 @@
-Perfect! Here’s your **full README.md** with the updated backend setup instructions integrated, ready to copy-paste:
 
 ````markdown
 # RepoLens 🔍  
