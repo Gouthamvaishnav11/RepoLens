@@ -33,6 +33,28 @@ For each file, the system detects whether:
 
 For Python files specifically, the backend downloads the source code and uses Python’s **AST (Abstract Syntax Tree)** module to safely analyze the code structure. This allows it to count functions and lines of code **without executing the code**, ensuring security and accuracy.
 
+🔍 AST-Based Static Code Analysis (Core Logic)
+
+For Python files, RepoLens uses Python’s built-in AST (Abstract Syntax Tree) module to perform static code analysis.
+
+Instead of executing the code, the backend parses each Python file into an AST using:
+
+tree = ast.parse(code)
+
+
+The AST represents the logical structure of the code, such as functions, variables, loops, and conditions, while ignoring formatting and comments. By walking through this tree using:
+
+ast.walk(tree)
+
+
+the system safely counts elements like:
+
+Number of function definitions
+
+Code structure complexity
+
+This approach is secure, accurate, and execution-free, making it ideal for analyzing untrusted GitHub repositories. It also mirrors how professional tools like linters and compilers understand code internally.
+
 ---
 
 ### Step 4: Repository Metrics Generation
