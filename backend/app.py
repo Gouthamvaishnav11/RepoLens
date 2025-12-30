@@ -7,7 +7,7 @@ from flask_cors import CORS
 from dotenv import load_dotenv
 from groq import Groq
 
-# ==================== SETUP ====================
+#  SETUP 
 load_dotenv()
 
 GITHUB_TOKEN = os.getenv("GITHUB_TOKEN")
@@ -27,7 +27,7 @@ LATEST_RESULT = {}
 LATEST_METRICS = {}
 LATEST_REPO_INFO = {}
 
-# ==================== HELPERS ====================
+#  HELPERS 
 def parse_repo_url(repo_url: str):
     parts = repo_url.rstrip("/").split("/")
     if len(parts) < 2:
@@ -61,7 +61,7 @@ def fetch_commits(owner, repo):
     r.raise_for_status()
     return r.json()
 
-# ==================== ANALYSIS ====================
+# ANALYSIS 
 def analyze_repository(repo_url):
     owner, repo = parse_repo_url(repo_url)
     files = walk_repo(owner, repo)
@@ -123,7 +123,7 @@ def analyze_repository(repo_url):
 
     return metrics
 
-# ==================== SCORING ====================
+#  SCORING 
 def calculate_scores(metrics):
     avg_func_size = metrics["lines"] / max(metrics["functions"], 1)
     code_quality = 90 if avg_func_size < 30 else 60
@@ -142,7 +142,7 @@ def calculate_scores(metrics):
     ]
     return final_score, breakdown
 
-# ==================== AI HELPERS ====================
+#  AI HELPERS 
 def safe_json_from_ai(text):
     try:
         text = text.strip()
@@ -230,7 +230,7 @@ OUTPUT FORMAT:
         return {"short_term":[],"mid_term":[],"long_term":[]}
 
 
-# ==================== RISK PREDICTION ====================
+#  RISK PREDICTION 
 def predict_risks(metrics):
     risks = {}
     risks["testing"] = "high" if not metrics["has_tests"] else "low"
@@ -241,7 +241,7 @@ def predict_risks(metrics):
     risks["overall_risk_score"] = int(overall)
     return risks
 
-# ==================== ROUTES ====================
+#  ROUTES
 @app.route("/api/analyze", methods=["POST"])
 def analyze():
     global LATEST_RESULT, LATEST_METRICS
@@ -281,6 +281,6 @@ def risks():
         return jsonify({"error":"No repository analyzed yet"}), 404
     return jsonify(predict_risks(LATEST_METRICS))
 
-# ==================== RUN ====================
+#  RUN
 if __name__ == "__main__":
     app.run(debug=True,port=5000)
