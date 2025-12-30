@@ -238,7 +238,7 @@ These insights are transformed into a **meaningful score**, a **human-readable s
 
   Create a .env file in the backend folder.
   Add the following keys:
-```bassh
+```bash
    GITHUB_TOKEN=your_github_personal_access_token
    GROQ_API_KEY=your_groq_api_key
 ```
