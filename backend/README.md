@@ -1,3 +1,5 @@
+````
+
 # RepoLens 🔍  
 ### AI-Powered GitHub Repository Evaluation & Developer Profiling Backend
 
@@ -115,11 +117,6 @@ This clean API separation makes the backend scalable and frontend-friendly.
 ### Step 10: Execution and Deployment
 
 Finally, the Flask server runs on port 5000. During development, debug mode is enabled for faster iteration. The architecture is deployment-ready and can easily be extended with databases, authentication, or caching.
+````
 
----
 
-## 🎯 Final Interview Closing Line
-
-> **“Overall, this system combines static code analysis, GitHub API integration, and AI evaluation to simulate how real recruiters assess GitHub repositories, while also providing actionable feedback to help developers improve.”**
-
----
