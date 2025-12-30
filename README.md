@@ -1,7 +1,18 @@
+Perfect! Here’s your **full README.md** with the updated backend setup instructions integrated, ready to copy-paste:
 
-
+````markdown
 # RepoLens 🔍  
 ### AI-Powered GitHub Repository Evaluation & Developer Profiling System
+
+## 📝 Abstract
+
+In today’s software industry, a developer’s GitHub repository serves as a key indicator of technical skills and project experience, often acting as a professional portfolio for recruiters and hiring managers. Despite its importance, many students, self-taught developers, and early-career professionals struggle to understand how repositories are evaluated, lack structured feedback on code quality and project organization, and are unsure how to improve their projects effectively.
+
+**RepoLens** is an AI-powered system designed to bridge this gap by providing intelligent evaluations of public GitHub repositories. The system analyzes multiple dimensions of a repository, including code quality, project structure, documentation, testing practices, version control habits, and real-world applicability. By leveraging a combination of rule-based logic and large language models (LLMs), RepoLens generates a quantitative score, a human-readable evaluation summary, and a personalized improvement roadmap.
+
+By offering actionable feedback and guidance, RepoLens functions as a virtual coding mentor, helping developers understand their strengths and weaknesses, enhance project quality, and align their work with industry expectations. The system supports continuous skill development and professional growth, enabling students and developers to transform their GitHub repositories into career-ready portfolios.
+
+---
 
 ## 📌 Project Theme
 **AI + Code Analysis + Developer Profiling**
@@ -46,7 +57,6 @@ RepoLens bridges the gap between **student projects** and **industry expectation
 
 ### Step 1: Input Layer
 User provides a public GitHub repository URL.
-
 
 ### Step 2: Repository Data Fetching
 Using the **GitHub REST API**, RepoLens extracts:
@@ -200,9 +210,60 @@ These insights are transformed into a **meaningful score**, a **human-readable s
 
 ---
 
-## 📄 License
-This project is developed for academic and learning purposes.
+## ⚙️ Setup & Run Instructions
+### Backend Setup
+1. Create a virtual environment:
+   ```bash
+   python -m venv backup
+````
+
+2. Activate the virtual environment:
+
+   * On Windows:
+
+     ```bash
+     backup\Scripts\activate
+     ```
+   * On macOS/Linux:
+
+     ```bash
+     source backup/bin/activate
+     ```
+3. Install dependencies in a single line:
+
+   ```bash
+   pip install flask flask-cors python-dotenv requests groq
+   ```
+4. Run the backend server:
+
+   ```bash
+   python app.py
+   ```
+
+### Frontend Setup
+
+1. Install dependencies:
+
+   ```bash
+   npm install
+   ```
+2. Run the development server:
+
+   ```bash
+   npm run dev
+   ```
 
 ---
 
+## 📄 License
+
+This project is developed for academic and learning purposes.
+
+---
+```
 ### ⭐ RepoLens – Turning GitHub Repositories into Career-Ready Portfolios
+```
+```
+
+
+
