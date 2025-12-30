@@ -258,11 +258,10 @@ These insights are transformed into a **meaningful score**, a **human-readable s
 
 This project is developed for academic and learning purposes.
 
----
 ```
 ### ⭐ RepoLens – Turning GitHub Repositories into Career-Ready Portfolios
 ```
-```
+
 
 
 
