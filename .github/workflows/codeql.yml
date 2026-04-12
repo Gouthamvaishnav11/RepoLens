@@ -1,0 +1,61 @@
+name: "RepoLens CodeQL Analysis"
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+  schedule:
+    - cron: '0 4 * * 1'   # Weekly scan (Monday)
+
+jobs:
+  analyze:
+    name: Analyze (Python + React)
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+      security-events: write
+
+    strategy:
+      matrix:
+        language: [ 'python', 'javascript' ]
+
+    steps:
+    # 📥 Checkout repo
+    - name: Checkout code
+      uses: actions/checkout@v3
+
+    # 🧠 Initialize CodeQL
+    - name: Initialize CodeQL
+      uses: github/codeql-action/init@v3
+      with:
+        languages: ${{ matrix.language }}
+
+    # ⚙️ Setup Python (for backend)
+    - name: Setup Python
+      if: matrix.language == 'python'
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.10'
+
+    - name: Install Python dependencies
+      if: matrix.language == 'python'
+      run: |
+        pip install flask flask-cors python-dotenv requests
+
+    # ⚛️ Setup Node (for React frontend)
+    - name: Setup Node.js
+      if: matrix.language == 'javascript'
+      uses: actions/setup-node@v3
+      with:
+        node-version: '18'
+
+    - name: Install frontend dependencies
+      if: matrix.language == 'javascript'
+      run: |
+        npm install
+
+    # 🔍 Run CodeQL Analysis
+    - name: Perform CodeQL Analysis
+      uses: github/codeql-action/analyze@v3
