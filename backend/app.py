@@ -2,12 +2,15 @@ import os
 import ast
 import json
 import requests
+from datetime import datetime
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 from dotenv import load_dotenv
 from groq import Groq
 from concurrent.futures import ThreadPoolExecutor
 from functools import lru_cache
+from flask_sqlalchemy import SQLAlchemy
+
 
 # SETUP
 load_dotenv()
@@ -22,6 +25,10 @@ client = Groq(api_key=GROQ_API_KEY)
 
 app = Flask(__name__)
 CORS(app)
+app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///repolens.db"
+app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
+
+db = SQLAlchemy(app)
 
 session = requests.Session()
 
@@ -31,6 +38,27 @@ LATEST_RESULT = {}
 LATEST_METRICS = {}
 LATEST_REPO_INFO = {}
 
+
+class Repository(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    repo_url = db.Column(db.String(300), unique=True)
+    owner = db.Column(db.String(100))
+    name = db.Column(db.String(100))
+    last_commit_sha = db.Column(db.String(100))
+
+
+class Analysis(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    repo_id = db.Column(db.Integer, db.ForeignKey("repository.id"))
+    score = db.Column(db.Integer)
+    summary = db.Column(db.Text)
+    strengths = db.Column(db.Text)
+    weaknesses = db.Column(db.Text)
+    breakdown = db.Column(db.Text)
+    roadmap = db.Column(db.Text)
+    commit_sha = db.Column(db.String(100))
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
 # HELPERS
 
 def parse_repo_url(repo_url: str):
@@ -39,8 +67,38 @@ def parse_repo_url(repo_url: str):
         raise ValueError("Invalid GitHub repository URL")
     return parts[-2], parts[-1]
 
-def fetch_repo_contents(owner, repo, path=""):
+def get_latest_commit_sha(owner, repo):
+    try:
+        # Get repo info (to know default branch)
+        repo_url = f"https://api.github.com/repos/{owner}/{repo}"
+        repo_res = session.get(repo_url, headers=HEADERS, timeout=10)
+
+        if repo_res.status_code != 200:
+            print("Repo error:", repo_res.text)
+            return None
+
+        default_branch = repo_res.json().get("default_branch", "main")
+
+        # Get latest commit from that branch
+        commit_url = f"https://api.github.com/repos/{owner}/{repo}/commits/{default_branch}"
+        commit_res = session.get(commit_url, headers=HEADERS, timeout=10)
+
+        if commit_res.status_code != 200:
+            print("Commit error:", commit_res.text)
+            return None
+
+        return commit_res.json().get("sha")
+
+    except Exception as e:
+        print("SHA error:", e)
+        return None
+
+def fetch_repo_contents(owner, repo, path="", ref=None):
     url = f"https://api.github.com/repos/{owner}/{repo}/contents/{path}"
+    
+    if ref:
+        url += f"?ref={ref}"
+
     r = session.get(url, headers=HEADERS, timeout=15)
     r.raise_for_status()
     return r.json()
@@ -69,9 +127,9 @@ def fetch_multiple_files(file_items):
             )
         )
 
-def walk_repo(owner, repo, path="", depth=0, max_depth=5):
+def walk_repo(owner, repo, path="", ref=None, depth=0, max_depth=5):
     try:
-        items = fetch_repo_contents(owner, repo, path)
+        items = fetch_repo_contents(owner, repo, path, ref)
     except:
         return []
 
@@ -81,7 +139,9 @@ def walk_repo(owner, repo, path="", depth=0, max_depth=5):
         if item["type"] == "file":
             files.append(item)
         elif item["type"] == "dir" and depth < max_depth:
-            files.extend(walk_repo(owner, repo, item["path"], depth + 1))
+            files.extend(
+                walk_repo(owner, repo, item["path"], ref, depth + 1)
+            )
 
     return files
 
@@ -105,10 +165,11 @@ def get_performance_level(score):
 
     else:
         return "Needs Improvement"
+    
+
 
 # ANALYSIS
 
-@lru_cache(maxsize=20)
 def analyze_repository(repo_url):
     owner, repo = parse_repo_url(repo_url)
     files = walk_repo(owner, repo)
@@ -344,24 +405,108 @@ def predict_risks(metrics):
 @app.route("/api/analyze", methods=["POST"])
 def analyze():
     global LATEST_RESULT, LATEST_METRICS
+
     repo_url = request.json.get("repo_url")
     if not repo_url:
         return jsonify({"error": "repo_url required"}), 400
 
-    metrics = analyze_repository(repo_url)
-    score, breakdown = calculate_scores(metrics)
-    ai_summary = generate_ai_summary(metrics, score)
+    owner, repo = parse_repo_url(repo_url)
 
+    # 🔑 Get latest commit
+    latest_sha = get_latest_commit_sha(owner, repo)
+    if not latest_sha:
+        return jsonify({"error": "Unable to fetch latest commit"}), 400
+
+    repo_obj = Repository.query.filter_by(repo_url=repo_url).first()
+
+    # CHECK EXISTING
+    if repo_obj:
+        last_analysis = Analysis.query.filter_by(repo_id=repo_obj.id)\
+            .order_by(Analysis.created_at.desc()).first()
+
+        # ✅ SAME COMMIT → RETURN CACHED
+        if last_analysis and last_analysis.commit_sha == latest_sha:
+            LATEST_RESULT = {
+                "score": last_analysis.score,
+                "performance": get_performance_level(last_analysis.score),
+                "summary": last_analysis.summary,
+                "strengths": json.loads(last_analysis.strengths or "[]"),
+                "weaknesses": json.loads(last_analysis.weaknesses or "[]"),
+                "breakdown": json.loads(last_analysis.breakdown or "[]"),
+                "roadmap": json.loads(last_analysis.roadmap or "{}"),
+                "message": "Cached result (no new commits)"
+            }
+            return jsonify(LATEST_RESULT)
+
+    else:
+        # 🆕 Create new repo entry
+        repo_obj = Repository(
+            repo_url=repo_url,
+            owner=owner,
+            name=repo,
+            last_commit_sha=latest_sha
+        )
+        db.session.add(repo_obj)
+        db.session.commit()
+
+    #  NEW ANALYSIS 
+    metrics = analyze_repository(repo_url)
+
+    score, breakdown = calculate_scores(metrics)   # ✅ use proper scoring
+    summary = generate_ai_summary(metrics, score)
+    roadmap = generate_ai_roadmap(metrics)
+
+    # 💾 SAVE
+    new_analysis = Analysis(
+        repo_id=repo_obj.id,
+        score=score,
+        summary=summary.get("summary", ""),
+        strengths=json.dumps(summary.get("strengths", [])),
+        weaknesses=json.dumps(summary.get("weaknesses", [])),
+        breakdown=json.dumps(breakdown),
+        roadmap=json.dumps(roadmap),
+        commit_sha=latest_sha
+    )
+
+    # 🔄 Update repo latest commit
+    repo_obj.last_commit_sha = latest_sha
+
+    db.session.add(new_analysis)
+    db.session.commit()
+
+    # ================== RESPONSE ==================
     LATEST_METRICS = metrics
     LATEST_RESULT = {
-    "score": score,
-    "performance": get_performance_level(score),
-    "summary": ai_summary.get("summary", "AI analysis unavailable."),
-    "strengths": ai_summary.get("strengths", []),
-    "weaknesses": ai_summary.get("weaknesses", []),
-    "breakdown": breakdown,
+        "score": score,
+        "performance": get_performance_level(score),
+        "summary": summary.get("summary", ""),
+        "strengths": summary.get("strengths", []),
+        "weaknesses": summary.get("weaknesses", []),
+        "breakdown": breakdown,
+        "roadmap": roadmap,
+        "message": "New analysis completed"
     }
-    return jsonify({"status": "analysis_complete"})
+
+    return jsonify(LATEST_RESULT)
+
+
+@app.route("/api/history/<int:repo_id>")
+def history(repo_id):
+    data = Analysis.query.filter_by(repo_id=repo_id).all()
+
+    return jsonify([
+        {
+            "score": d.score,
+            "summary": d.summary,
+            "strengths": json.loads(d.strengths),
+            "weaknesses": json.loads(d.weaknesses),
+            "roadmap": json.loads(d.roadmap),
+            "commit": d.commit_sha,
+            "date": d.created_at
+        }
+        for d in data
+    ])
+
 
 @app.route("/api/results")
 def results():
